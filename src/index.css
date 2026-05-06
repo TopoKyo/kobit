@@ -1,0 +1,49 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Outfit:wght@400;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Outfit", sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+
+  --color-brand-black: #0f0f0f;
+  --color-brand-orange: #ff6a00;
+  --color-brand-white: #ffffff;
+
+  @keyframes spin-slow {
+    from {
+      transform: rotate(0deg);
+    }
+    to {
+      transform: rotate(360deg);
+    }
+  }
+  --animate-spin-slow: spin-slow 8s linear infinite;
+}
+
+@layer base {
+  body {
+    @apply bg-brand-black text-brand-white font-sans antialiased;
+  }
+
+  h1, h2, h3, h4 {
+    @apply font-display tracking-tight;
+  }
+}
+
+.glow-orange {
+  box-shadow: 0 0 40px rgba(255, 106, 0, 0.15);
+}
+
+.text-gradient-hero {
+  @apply text-transparent bg-clip-text bg-linear-to-r from-white via-white to-gray-500;
+}
+
+.bg-dot-pattern {
+  background-image: radial-gradient(rgba(255, 106, 0, 0.1) 1px, transparent 1px);
+  background-size: 24px 24px;
+}
+
+.glass-panel {
+  @apply bg-white/5 border border-white/10 backdrop-blur-sm;
+}
