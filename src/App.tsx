@@ -236,6 +236,7 @@ const WorkflowSection = () => {
         <div className="grid grid-cols-1 md:grid-cols-5 gap-12">
           {steps.map((step, idx) => (
             <div
+              key={step.n}
               className="group"
             >
               <div className="flex flex-col items-center">
@@ -357,6 +358,7 @@ const ReadySystemsSection = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {systems.map((sys, idx) => (
             <div 
+              key={sys.title}
               className="p-10 glass-panel rounded-3xl group hover:border-brand-orange/30 transition-all flex flex-col md:flex-row gap-8"
             >
               <div className="w-20 h-20 shrink-0 bg-brand-orange/10 border border-brand-orange/20 rounded-2xl flex items-center justify-center group-hover:bg-brand-orange group-hover:text-black transition-all duration-500">
@@ -497,6 +499,7 @@ const CaseStudy = () => {
         <div className="grid lg:grid-cols-3 gap-6">
           {cases.map((cs, idx) => (
             <div 
+              key={idx}
               className="p-10 glass-panel rounded-2xl flex flex-col justify-between"
             >
               <div className="text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-8">Caso de Éxito #0{idx+1}</div>
