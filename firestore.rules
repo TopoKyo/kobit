@@ -1,0 +1,80 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Default-deny catch-all
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // --- Helpers ---
+    
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isEmailVerified() {
+      return isSignedIn() && request.auth.token.email_verified == true;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    // Admin lookup helper
+    function isAdmin() {
+      return isSignedIn() && (
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid)) ||
+        request.auth.token.email == "chinchuarchibo@gmail.com" // Bootstrapped admin
+      );
+    }
+
+    // --- Entity Validation ---
+
+    function isValidContactRequest(data) {
+      return data.keys().hasAll(['name', 'email', 'company', 'area', 'message', 'createdAt']) &&
+             data.keys().size() == 6 &&
+             data.name is string && data.name.size() > 0 && data.name.size() <= 200 &&
+             data.email is string && data.email.size() > 0 && data.email.size() <= 200 &&
+             data.company is string && data.company.size() > 0 && data.company.size() <= 200 &&
+             data.area is string && data.area.size() > 0 && data.area.size() <= 200 &&
+             data.message is string && data.message.size() > 0 && data.message.size() <= 2000 &&
+             data.createdAt == request.time;
+    }
+
+    // --- Match Blocks ---
+
+    match /contactRequests/{requestId} {
+      allow create: if isValidId(requestId) && isValidContactRequest(incoming());
+      
+      // Only admins can read the requests
+      allow get: if isAdmin();
+      allow list: if isAdmin();
+      
+      // Only admins can delete or update (e.g. marking as read/processed, though not explicitly in current UI)
+      allow delete: if isAdmin();
+      allow update: if isAdmin() && isValidContactRequest(incoming());
+    }
+
+    match /admins/{adminUid} {
+      // Only admins can see other admins
+      allow read: if isAdmin();
+      
+      // For bootstrapping, we allow the initial admin to register themselves if they match the email
+      allow create: if isSignedIn() && (
+        isAdmin() || 
+        (adminUid == request.auth.uid && request.auth.token.email == "chinchuarchibo@gmail.com")
+      );
+      
+      allow update, delete: if isAdmin();
+    }
+  }
+}

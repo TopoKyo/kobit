@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, FormEvent, lazy, Suspense } from 'react';
 import { 
   Search, 
   BarChart3, 
@@ -29,9 +29,14 @@ import {
   Fingerprint,
   QrCode,
   FileBarChart,
-  Brain
+  Brain,
+  Check,
+  Loader2,
+  Lock
 } from 'lucide-react';
-import { motion, AnimatePresence } from 'motion/react';
+import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { db, handleFirestoreError, OperationType } from './lib/firebase';
+import { AdminDashboard } from './components/AdminDashboard';
 
 // --- Components ---
 
@@ -94,34 +99,27 @@ const Navbar = () => {
       </div>
 
       {/* Mobile Menu */}
-      <AnimatePresence>
-        {isMobileMenuOpen && (
-          <motion.div 
-            initial={{ opacity: 0, y: -20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -20 }}
-            className="absolute top-full left-0 w-full bg-brand-black border-b border-white/10 py-6 px-10 flex flex-col gap-4 md:hidden"
-          >
-            {navLinks.map((link) => (
-              <a 
-                key={link.name} 
-                href={link.href} 
-                className="text-lg font-medium hover:text-brand-orange py-2"
-                onClick={() => setIsMobileMenuOpen(false)}
-              >
-                {link.name}
-              </a>
-            ))}
+      {isMobileMenuOpen && (
+        <div className="absolute top-full left-0 w-full bg-brand-black border-b border-white/10 py-6 px-10 flex flex-col gap-4 md:hidden">
+          {navLinks.map((link) => (
             <a 
-              href="#contact" 
-              className="bg-brand-orange text-brand-black px-5 py-3 rounded-xl text-center font-bold"
+              key={link.name} 
+              href={link.href} 
+              className="text-lg font-medium hover:text-brand-orange py-2"
               onClick={() => setIsMobileMenuOpen(false)}
             >
-              Agendar Diagnóstico
+              {link.name}
             </a>
-          </motion.div>
-        )}
-      </AnimatePresence>
+          ))}
+          <a 
+            href="#contact" 
+            className="bg-brand-orange text-brand-black px-5 py-3 rounded-xl text-center font-bold"
+            onClick={() => setIsMobileMenuOpen(false)}
+          >
+            Agendar Diagnóstico
+          </a>
+        </div>
+      )}
     </nav>
   );
 };
@@ -134,11 +132,7 @@ const Hero = () => {
       <div className="absolute bottom-[-10%] left-[-5%] w-[400px] h-[400px] bg-brand-orange opacity-5 blur-[120px] rounded-full -z-10" />
       
       <div className="max-w-7xl mx-auto px-10 grid grid-cols-12 gap-0 items-center w-full">
-        <motion.div
-          initial={{ opacity: 0, x: -30 }}
-          whileInView={{ opacity: 1, x: 0 }}
-          viewport={{ once: true }}
-          transition={{ duration: 0.8 }}
+        <div
           className="col-span-12 lg:col-span-12 xl:col-span-7 pr-12 py-20"
         >
           <div className="inline-block px-3 py-1 bg-white/5 border border-white/10 rounded-full text-[10px] uppercase tracking-[0.2em] text-brand-orange font-bold mb-8">
@@ -172,14 +166,10 @@ const Hero = () => {
               Nuestra Metodología
             </a>
           </div>
-        </motion.div>
+        </div>
 
         {/* Right Column Grid Style */}
-        <motion.div
-          initial={{ opacity: 0, scale: 0.95 }}
-          whileInView={{ opacity: 1, scale: 1 }}
-          viewport={{ once: true }}
-          transition={{ duration: 1 }}
+        <div
           className="hidden xl:flex col-span-5 bg-white/5 border-l border-white/10 p-10 flex-col justify-between self-stretch h-full overflow-hidden relative"
         >
           <div className="bg-dot-pattern absolute inset-0 opacity-20 pointer-events-none" />
@@ -219,7 +209,7 @@ const Hero = () => {
               ))}
             </div>
           </div>
-        </motion.div>
+        </div>
       </div>
     </section>
   );
@@ -245,12 +235,7 @@ const WorkflowSection = () => {
 
         <div className="grid grid-cols-1 md:grid-cols-5 gap-12">
           {steps.map((step, idx) => (
-            <motion.div
-              key={step.title}
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ delay: idx * 0.1 }}
+            <div
               className="group"
             >
               <div className="flex flex-col items-center">
@@ -260,7 +245,7 @@ const WorkflowSection = () => {
                 <h3 className="text-lg font-bold mb-4 group-hover:text-brand-orange transition-colors">{step.title}</h3>
                 <p className="text-gray-500 text-sm leading-relaxed">{step.desc}</p>
               </div>
-            </motion.div>
+            </div>
           ))}
         </div>
       </div>
@@ -371,12 +356,7 @@ const ReadySystemsSection = () => {
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {systems.map((sys, idx) => (
-            <motion.div 
-              key={sys.title}
-              initial={{ opacity: 0, scale: 0.95 }}
-              whileInView={{ opacity: 1, scale: 1 }}
-              viewport={{ once: true }}
-              transition={{ delay: idx * 0.1 }}
+            <div 
               className="p-10 glass-panel rounded-3xl group hover:border-brand-orange/30 transition-all flex flex-col md:flex-row gap-8"
             >
               <div className="w-20 h-20 shrink-0 bg-brand-orange/10 border border-brand-orange/20 rounded-2xl flex items-center justify-center group-hover:bg-brand-orange group-hover:text-black transition-all duration-500">
@@ -393,7 +373,7 @@ const ReadySystemsSection = () => {
                   ))}
                 </div>
               </div>
-            </motion.div>
+            </div>
           ))}
         </div>
         
@@ -415,11 +395,7 @@ const TrainingSection = () => {
       <div className="absolute top-0 right-0 w-1/3 h-full bg-brand-orange/5 blur-[100px] pointer-events-none" />
       
       <div className="max-w-7xl mx-auto px-10 grid lg:grid-cols-2 gap-20 items-center">
-        <motion.div
-           initial={{ opacity: 0, x: -30 }}
-           whileInView={{ opacity: 1, x: 0 }}
-           viewport={{ once: true }}
-        >
+        <div>
           <div className="w-14 h-14 rounded-xl bg-brand-orange text-black flex items-center justify-center mb-10 shadow-[0_0_40px_rgba(255,106,0,0.3)]">
             <GraduationCap className="w-8 h-8" />
           </div>
@@ -446,14 +422,9 @@ const TrainingSection = () => {
               </div>
             ))}
           </div>
-        </motion.div>
+        </div>
 
-        <motion.div 
-          initial={{ opacity: 0, scale: 0.95 }}
-          whileInView={{ opacity: 1, scale: 1 }}
-          viewport={{ once: true }}
-          className="relative"
-        >
+        <div>
            <div className="aspect-video glass-panel rounded-3xl p-10 flex flex-col justify-center gap-12 overflow-hidden relative">
               <div className="bg-dot-pattern absolute inset-0 opacity-10 pointer-events-none" />
               
@@ -463,11 +434,7 @@ const TrainingSection = () => {
                   <span className="text-brand-orange">98% Completado</span>
                 </div>
                 <div className="w-full h-2 bg-white/5 rounded-full overflow-hidden">
-                  <motion.div 
-                    initial={{ width: 0 }}
-                    whileInView={{ width: '98%' }}
-                    viewport={{ once: true }}
-                    transition={{ duration: 2, delay: 0.5 }}
+                  <div 
                     className="h-full bg-brand-orange rounded-full shadow-[0_0_15px_rgba(255,106,0,0.5)]"
                   />
                 </div>
@@ -488,17 +455,15 @@ const TrainingSection = () => {
            </div>
            
            {/* Floating badges */}
-           <motion.div 
-             animate={{ y: [0, -10, 0] }}
-             transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
+           <div 
              className="absolute -top-6 -right-6 p-4 bg-black border border-brand-orange/40 rounded-xl glow-orange z-20"
            >
               <div className="flex items-center gap-3">
                 <Settings className="text-brand-orange w-4 h-4 animate-spin-slow" />
                 <span className="text-[10px] font-bold uppercase tracking-widest text-white whitespace-nowrap">System Optimized</span>
               </div>
-           </motion.div>
-        </motion.div>
+           </div>
+        </div>
       </div>
     </section>
   );
@@ -531,12 +496,7 @@ const CaseStudy = () => {
         
         <div className="grid lg:grid-cols-3 gap-6">
           {cases.map((cs, idx) => (
-            <motion.div 
-              key={idx}
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ delay: idx * 0.1 }}
+            <div 
               className="p-10 glass-panel rounded-2xl flex flex-col justify-between"
             >
               <div className="text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-8">Caso de Éxito #0{idx+1}</div>
@@ -554,7 +514,7 @@ const CaseStudy = () => {
                   <p className="text-lg font-bold text-white tracking-tight">{cs.result}</p>
                 </div>
               </div>
-            </motion.div>
+            </div>
           ))}
         </div>
       </div>
@@ -597,6 +557,34 @@ const ValueProp = () => {
 };
 
 const Contact = () => {
+  const [formData, setFormData] = useState({
+    name: '',
+    email: '',
+    company: '',
+    area: 'Optimización de Procesos',
+    message: ''
+  });
+  const [status, setStatus] = useState<'idle' | 'submitting' | 'success' | 'error'>('idle');
+
+  const handleSubmit = async (e: FormEvent) => {
+    e.preventDefault();
+    setStatus('submitting');
+    
+    try {
+      await addDoc(collection(db, 'contactRequests'), {
+        ...formData,
+        createdAt: serverTimestamp()
+      });
+      setStatus('success');
+      setFormData({ name: '', email: '', company: '', area: 'Optimización de Procesos', message: '' });
+      setTimeout(() => setStatus('idle'), 5000);
+    } catch (error) {
+      console.error("Error submitting form:", error);
+      setStatus('error');
+      handleFirestoreError(error, OperationType.CREATE, 'contactRequests');
+    }
+  };
+
   return (
     <section id="contact" className="py-32 bg-[#050505] border-t border-white/5 relative overflow-hidden">
       <div className="absolute top-0 right-0 w-1/2 h-full bg-brand-orange/5 blur-[120px] rounded-full pointer-events-none" />
@@ -622,29 +610,88 @@ const Contact = () => {
         <div className="lg:col-span-6 glass-panel p-12 rounded-2xl shadow-2xl relative">
           <div className="absolute -top-12 -right-6 w-24 h-24 bg-brand-orange/20 blur-[60px] rounded-full" />
           
-          <form className="space-y-10" onSubmit={(e) => e.preventDefault()}>
+          <form className="space-y-10" onSubmit={handleSubmit}>
             <div className="grid md:grid-cols-2 gap-10">
               <div className="space-y-4">
                 <label className="text-[10px] font-bold uppercase tracking-[0.3em] text-gray-500">Tu Nombre</label>
-                <input type="text" className="w-full bg-transparent border-b border-white/10 py-3 focus:outline-none focus:border-brand-orange transition-colors text-white placeholder:text-gray-700" placeholder="Nombre completo" />
+                <input 
+                  type="text" 
+                  required
+                  value={formData.name}
+                  onChange={(e) => setFormData({...formData, name: e.target.value})}
+                  className="w-full bg-transparent border-b border-white/10 py-3 focus:outline-none focus:border-brand-orange transition-colors text-white placeholder:text-gray-700" 
+                  placeholder="Nombre completo" 
+                />
               </div>
               <div className="space-y-4">
+                <label className="text-[10px] font-bold uppercase tracking-[0.3em] text-gray-500">Email de contacto</label>
+                <input 
+                  type="email" 
+                  required
+                  value={formData.email}
+                  onChange={(e) => setFormData({...formData, email: e.target.value})}
+                  className="w-full bg-transparent border-b border-white/10 py-3 focus:outline-none focus:border-brand-orange transition-colors text-white placeholder:text-gray-700" 
+                  placeholder="juan@empresa.com" 
+                />
+              </div>
+            </div>
+            <div className="grid md:grid-cols-2 gap-10">
+              <div className="space-y-4">
                 <label className="text-[10px] font-bold uppercase tracking-[0.3em] text-gray-500">Nombre de Empresa</label>
-                <input type="text" className="w-full bg-transparent border-b border-white/10 py-3 focus:outline-none focus:border-brand-orange transition-colors text-white placeholder:text-gray-700" placeholder="Empresa S.A." />
+                <input 
+                  type="text" 
+                  required
+                  value={formData.company}
+                  onChange={(e) => setFormData({...formData, company: e.target.value})}
+                  className="w-full bg-transparent border-b border-white/10 py-3 focus:outline-none focus:border-brand-orange transition-colors text-white placeholder:text-gray-700" 
+                  placeholder="Empresa S.A." 
+                />
+              </div>
+              <div className="space-y-4">
+                <label className="text-[10px] font-bold uppercase tracking-[0.3em] text-gray-500">Área de Interés</label>
+                <select 
+                  value={formData.area}
+                  onChange={(e) => setFormData({...formData, area: e.target.value})}
+                  className="w-full bg-transparent border-b border-white/10 py-3 focus:outline-none focus:border-brand-orange transition-colors appearance-none text-gray-500"
+                >
+                  <option>Optimización de Procesos</option>
+                  <option>Inventario y Logística</option>
+                  <option>Software a Medida</option>
+                  <option>Implementación de IA</option>
+                </select>
               </div>
             </div>
             <div className="space-y-4">
-              <label className="text-[10px] font-bold uppercase tracking-[0.3em] text-gray-500">Área de Interés</label>
-              <select className="w-full bg-transparent border-b border-white/10 py-3 focus:outline-none focus:border-brand-orange transition-colors appearance-none text-gray-500">
-                <option>Optimización de Procesos</option>
-                <option>Inventario y Logística</option>
-                <option>Software a Medida</option>
-                <option>Implementación de IA</option>
-              </select>
+              <label className="text-[10px] font-bold uppercase tracking-[0.3em] text-gray-500">Mensaje o Problema a Resolver</label>
+              <textarea 
+                rows={3} 
+                required
+                value={formData.message}
+                onChange={(e) => setFormData({...formData, message: e.target.value})}
+                className="w-full bg-transparent border-b border-white/10 py-3 focus:outline-none focus:border-brand-orange transition-colors text-white placeholder:text-gray-700 resize-none" 
+                placeholder="Cuéntanos brevemente qué necesitas optimizar..."
+              />
             </div>
-            <button className="w-full py-6 bg-brand-orange text-black font-black uppercase text-xs tracking-[0.4em] hover:shadow-[0_0_50px_rgba(255,106,0,0.4)] transition-all transform hover:-translate-y-1">
-              Agendar Diagnóstico
+            <button 
+              disabled={status === 'submitting'}
+              className="w-full py-6 bg-brand-orange text-black font-black uppercase text-xs tracking-[0.4em] hover:shadow-[0_0_50px_rgba(255,106,0,0.4)] transition-all transform hover:-translate-y-1 disabled:opacity-50 disabled:transform-none"
+            >
+              {status === 'submitting' ? (
+                <span className="flex items-center justify-center gap-2">
+                  <Loader2 className="w-4 h-4 animate-spin" /> Enviando...
+                </span>
+              ) : status === 'success' ? (
+                <span className="flex items-center justify-center gap-2">
+                  <Check className="w-4 h-4" /> ¡Enviado con éxito!
+                </span>
+              ) : 'Agendar Diagnóstico'}
             </button>
+
+            {status === 'error' && (
+              <p className="text-center text-red-500 text-xs font-bold uppercase tracking-widest mt-4">
+                Ocurrió un error. Por favor intenta más tarde.
+              </p>
+            )}
           </form>
         </div>
       </div>
@@ -652,7 +699,7 @@ const Contact = () => {
   );
 };
 
-const Footer = () => (
+const Footer = ({ onAdminClick }: { onAdminClick: () => void }) => (
   <footer className="border-t border-white/10 bg-black flex flex-col items-center relative z-10 overflow-hidden">
     {/* Bottom Conversion Bar */}
     <div className="w-full h-auto min-h-24 flex flex-col md:flex-row items-center px-10 py-8 justify-between gap-8 border-b border-white/5">
@@ -667,7 +714,7 @@ const Footer = () => (
         </div>
         <div className="flex flex-col">
           <span className="text-[10px] text-gray-500 uppercase tracking-[0.2em] mb-1">Soporte</span>
-          <span className="text-sm font-bold text-white uppercase tracking-tight Acompañamiento">Acompañamiento Real</span>
+          <span className="text-sm font-bold text-white uppercase tracking-tight">Acompañamiento Real</span>
         </div>
       </div>
       <div className="flex items-center gap-6">
@@ -690,14 +737,38 @@ const Footer = () => (
       <p className="text-gray-500 text-sm max-w-lg mx-auto leading-relaxed mb-10">
         No solo desarrollamos tecnología. La implementamos, la enseñamos y la optimizamos con inteligencia artificial para hacer crecer tu empresa ante cualquier desafío operativo.
       </p>
-      <div className="text-[10px] text-gray-700 uppercase tracking-[0.4em] font-bold">
-        © {new Date().getFullYear()} Kobit Soluciones Tecnológicas.
+      
+      <div className="flex flex-col items-center gap-6">
+        <button 
+          onClick={onAdminClick}
+          className="flex items-center gap-2 px-4 py-2 border border-white/10 rounded-full text-[10px] uppercase tracking-widest text-gray-500 hover:text-brand-orange hover:border-brand-orange/50 transition-all group"
+        >
+          <Lock className="w-3 h-3 transition-transform group-hover:scale-110" />
+          Panel de Control
+        </button>
+        
+        <div className="text-[10px] text-gray-700 uppercase tracking-[0.4em] font-bold">
+          © 2026 Kobit Soluciones Tecnológicas.
+        </div>
       </div>
     </div>
   </footer>
 );
 
 export default function App() {
+  const [showAdmin, setShowAdmin] = useState(false);
+
+  useEffect(() => {
+    // Hidden way to enter admin mode: check URL for ?admin=true
+    if (window.location.search.includes('admin=true')) {
+      setShowAdmin(true);
+    }
+  }, []);
+
+  if (showAdmin) {
+    return <AdminDashboard />;
+  }
+
   return (
     <div className="min-h-screen selection:bg-brand-orange selection:text-brand-black">
       <Navbar />
@@ -711,7 +782,7 @@ export default function App() {
         <ValueProp />
         <Contact />
       </main>
-      <Footer />
+      <Footer onAdminClick={() => setShowAdmin(true)} />
     </div>
   );
 }

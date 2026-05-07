@@ -1,0 +1,61 @@
+{
+  "entities": {
+    "ContactRequest": {
+      "title": "Contact Request",
+      "description": "Information submitted via the contact form by potential clients.",
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Full name of the contact person."
+        },
+        "email": {
+          "type": "string",
+          "format": "email",
+          "description": "Contact email address."
+        },
+        "company": {
+          "type": "string",
+          "description": "Name of the company."
+        },
+        "area": {
+          "type": "string",
+          "description": "Area of interest for optimization."
+        },
+        "message": {
+          "type": "string",
+          "description": "Brief description of the problem or interest."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Timestamp when the request was created."
+        }
+      },
+      "required": ["name", "email", "company", "area", "message", "createdAt"]
+    },
+    "Admin": {
+      "title": "Administrator",
+      "description": "Users with administrative access to view contact requests.",
+      "type": "object",
+      "properties": {
+        "email": {
+          "type": "string",
+          "format": "email",
+          "description": "Admin email address."
+        }
+      },
+      "required": ["email"]
+    }
+  },
+  "firestore": {
+    "/contactRequests/{requestId}": {
+      "schema": "ContactRequest",
+      "description": "Collection of contact requests from the landing page."
+    },
+    "/admins/{adminUid}": {
+      "schema": "Admin",
+      "description": "Collection of authorized administrators."
+    }
+  }
+}
