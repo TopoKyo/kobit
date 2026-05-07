@@ -18,6 +18,7 @@ export const AdminDashboard = () => {
   const [user, setUser] = useState<User | null>(null);
   const [isAdmin, setIsAdmin] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [requests, setRequests] = useState<ContactRequest[]>([]);
   const [selectedRequest, setSelectedRequest] = useState<ContactRequest | null>(null);
 
@@ -25,20 +26,30 @@ export const AdminDashboard = () => {
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       setUser(currentUser);
       if (currentUser) {
+        console.log("Logged in user:", currentUser.email, currentUser.uid);
         try {
-          // Check if admin doc exists or if it's the bootstrapped admin
-          const adminDoc = await getDoc(doc(db, 'admins', currentUser.uid));
-          if (adminDoc.exists() || currentUser.email === 'chinchuarchibo@gmail.com') {
+          // Check if bootstrapped admin first to avoid permission issues before doc exists
+          if (currentUser.email === 'chinchuarchibo@gmail.com') {
             setIsAdmin(true);
-            // If bootstrapped but no doc, create the doc for easier lookup later
-            if (!adminDoc.exists() && currentUser.email === 'chinchuarchibo@gmail.com') {
-              await setDoc(doc(db, 'admins', currentUser.uid), { email: currentUser.email });
+            try {
+              const adminDoc = await getDoc(doc(db, 'admins', currentUser.uid));
+              if (!adminDoc.exists()) {
+                await setDoc(doc(db, 'admins', currentUser.uid), { 
+                  email: currentUser.email,
+                  bootstrapped: true,
+                  createdAt: new Date().toISOString()
+                });
+              }
+            } catch (e) {
+              console.warn("Could not sync bootstrapped admin to Firestore:", e);
             }
           } else {
-            setIsAdmin(false);
+            const adminDoc = await getDoc(doc(db, 'admins', currentUser.uid));
+            setIsAdmin(adminDoc.exists());
           }
-        } catch (error) {
+        } catch (error: any) {
           console.error("Error checking admin status:", error);
+          setError("Error al verificar permisos: " + (error.message || "Unknown error"));
           setIsAdmin(false);
         }
       } else {
@@ -68,10 +79,15 @@ export const AdminDashboard = () => {
   }, [isAdmin]);
 
   const handleLogin = async () => {
+    setError(null);
     try {
-      await signInWithPopup(auth, new GoogleAuthProvider());
-    } catch (error) {
-      console.error("Login failed:", error);
+      const provider = new GoogleAuthProvider();
+      // Optional: Force account selection
+      provider.setCustomParameters({ prompt: 'select_account' });
+      await signInWithPopup(auth, provider);
+    } catch (err: any) {
+      console.error("Login failed:", err);
+      setError(err.message || "Error al iniciar sesión");
     }
   };
 
@@ -101,6 +117,13 @@ export const AdminDashboard = () => {
           </div>
           <h1 className="text-3xl font-bold font-display">Acceso Restringido</h1>
           <p className="text-gray-400">Panel de administración privado para Kobit Soluciones Tecnológicas.</p>
+          
+          {error && (
+            <div className="bg-red-500/10 border border-red-500/50 p-4 rounded-xl text-red-500 text-xs text-left">
+              <strong>Error de Login:</strong> {error}
+            </div>
+          )}
+
           <button 
             onClick={handleLogin}
             className="w-full py-4 bg-brand-orange text-black font-black uppercase text-xs tracking-widest hover:shadow-[0_0_30px_rgba(255,106,0,0.3)] transition-all transform hover:-translate-y-1"
