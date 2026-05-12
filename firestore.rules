@@ -50,20 +50,35 @@ service cloud.firestore {
              data.createdAt == request.time;
     }
 
+    function isValidPortfolioCase(data) {
+      return data.keys().hasAll(['title', 'challenge', 'solution', 'impact', 'createdAt', 'updatedAt']) &&
+             // Optional fields: videoUrl, photos, testimonial, testimonialAuthor
+             data.title is string && data.title.size() > 0 && data.title.size() <= 200 &&
+             data.challenge is string && data.challenge.size() > 0 && data.challenge.size() <= 5000 &&
+             data.solution is string && data.solution.size() > 0 && data.solution.size() <= 5000 &&
+             data.impact is string && data.impact.size() > 0 && data.impact.size() <= 5000 &&
+             data.createdAt is timestamp &&
+             data.updatedAt == request.time &&
+             (!('videoUrl' in data) || (data.videoUrl is string && data.videoUrl.size() <= 1000)) &&
+             (!('photos' in data) || (data.photos is list && data.photos.size() <= 10)) &&
+             (!('testimonial' in data) || (data.testimonial is string && data.testimonial.size() <= 2000)) &&
+             (!('testimonialAuthor' in data) || (data.testimonialAuthor is string && data.testimonialAuthor.size() <= 200));
+    }
+
     // --- Match Blocks ---
+
+    match /portfolio/{caseId} {
+      allow get, list: if true;
+      allow create: if isAdmin() && isValidId(caseId) && isValidPortfolioCase(incoming());
+      allow update: if isAdmin() && isValidPortfolioCase(incoming());
+      allow delete: if isAdmin();
+    }
 
     match /contactRequests/{requestId} {
       allow create: if isValidId(requestId) && isValidContactRequest(incoming());
-      
-      // Only admins can read the requests
-      allow get: if isAdmin();
-      allow list: if isAdmin();
-      
-      // Only admins can delete or update (e.g. marking as read/processed, though not explicitly in current UI)
-      allow delete: if isAdmin();
+      allow get, list, delete: if isAdmin();
       allow update: if isAdmin() && isValidContactRequest(incoming());
     }
-
     match /admins/{adminUid} {
       // Only admins can see other admins
       allow read: if isAdmin();

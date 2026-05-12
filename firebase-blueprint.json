@@ -46,6 +46,24 @@
         }
       },
       "required": ["email"]
+    },
+    "PortfolioCase": {
+      "title": "Portfolio Case",
+      "description": "A successful project showcase for the portfolio section.",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string" },
+        "videoUrl": { "type": "string" },
+        "photos": { "type": "array", "items": { "type": "string" } },
+        "testimonial": { "type": "string" },
+        "testimonialAuthor": { "type": "string" },
+        "challenge": { "type": "string" },
+        "solution": { "type": "string" },
+        "impact": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["title", "challenge", "solution", "impact", "createdAt", "updatedAt"]
     }
   },
   "firestore": {
@@ -56,6 +74,10 @@
     "/admins/{adminUid}": {
       "schema": "Admin",
       "description": "Collection of authorized administrators."
+    },
+    "/portfolio/{caseId}": {
+      "schema": "PortfolioCase",
+      "description": "Collection of portfolio showcases."
     }
   }
 }
