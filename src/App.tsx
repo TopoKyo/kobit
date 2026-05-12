@@ -296,9 +296,9 @@ const Navbar = () => {
       }`}
     >
       <div className="max-w-7xl mx-auto px-10 flex justify-between items-center">
-        <div className="flex items-center gap-2 group cursor-pointer">
-          <div className="w-8 h-8 bg-brand-orange rounded-sm flex items-center justify-center font-bold text-black text-sm">K</div>
-          <span className="text-xl font-bold tracking-tight">KOBIT <span className="text-brand-orange">SOLUCIONES</span></span>
+        <div className="flex items-center gap-3 group cursor-pointer">
+          <img src="/logo.png" alt="Kobit Logo" className="h-16 w-auto object-contain transition-transform group-hover:scale-105" referrerPolicy="no-referrer" />
+          <span className="text-xl font-bold tracking-tight hidden sm:block">KOBIT <span className="text-brand-orange">SOLUCIONES</span></span>
         </div>
 
         {/* Desktop Nav */}
@@ -1197,8 +1197,8 @@ const Footer = ({ onAdminClick }: { onAdminClick: () => void }) => (
     </div>
 
     <div className="w-full py-12 px-10 text-center">
-      <div className="flex items-center justify-center gap-2 mb-6">
-        <div className="w-8 h-8 bg-brand-orange rounded-sm flex items-center justify-center font-bold text-black text-sm">K</div>
+      <div className="flex flex-col items-center gap-3 mb-6">
+        <img src="/logo.png" alt="Kobit Logo" className="h-20 w-auto object-contain mb-2" referrerPolicy="no-referrer" />
         <span className="text-xl font-bold tracking-tight uppercase">KOBIT <span className="text-brand-orange">SOLUCIONES</span></span>
       </div>
       <p className="text-gray-500 text-sm max-w-lg mx-auto leading-relaxed mb-10">
