@@ -21,6 +21,7 @@ import {
   MessageCircle, 
   CheckCircle2,
   ChevronRight,
+  ChevronLeft,
   Menu,
   X,
   Zap,
@@ -129,6 +130,73 @@ const Modal = ({ isOpen, onClose, title, subtitle, content, methodology }: { isO
   );
 };
 
+const PhotoCarousel = ({ photos, title }: { photos: string[], title: string }) => {
+  const [currentIndex, setCurrentIndex] = useState(0);
+
+  const next = () => {
+    setCurrentIndex((prev) => (prev + 1) % photos.length);
+  };
+
+  const prev = () => {
+    setCurrentIndex((prev) => (prev - 1 + photos.length) % photos.length);
+  };
+
+  if (photos.length === 0) return null;
+
+  return (
+    <div className="relative group w-full aspect-[16/9] md:aspect-[21/9] rounded-[2.5rem] overflow-hidden glass-panel border-white/5 shadow-2xl">
+      <AnimatePresence mode="wait">
+        <motion.img
+          key={currentIndex}
+          src={photos[currentIndex]}
+          alt={`${title} - ${currentIndex + 1}`}
+          initial={{ opacity: 0, x: 20 }}
+          animate={{ opacity: 1, x: 0 }}
+          exit={{ opacity: 0, x: -20 }}
+          transition={{ duration: 0.5, ease: "easeInOut" }}
+          className="w-full h-full object-cover"
+          referrerPolicy="no-referrer"
+        />
+      </AnimatePresence>
+
+      {photos.length > 1 && (
+        <>
+          <div className="absolute inset-0 flex items-center justify-between p-4 md:p-8 opacity-0 group-hover:opacity-100 transition-opacity">
+            <button
+              onClick={prev}
+              className="w-12 h-12 rounded-full bg-black/50 backdrop-blur-md border border-white/10 flex items-center justify-center text-white hover:bg-brand-orange hover:text-black transition-all"
+            >
+              <ChevronLeft className="w-6 h-6" />
+            </button>
+            <button
+              onClick={next}
+              className="w-12 h-12 rounded-full bg-black/50 backdrop-blur-md border border-white/10 flex items-center justify-center text-white hover:bg-brand-orange hover:text-black transition-all"
+            >
+              <ChevronRight className="w-6 h-6" />
+            </button>
+          </div>
+
+          <div className="absolute bottom-8 left-1/2 -translate-x-1/2 flex gap-2">
+            {photos.map((_, i) => (
+              <button
+                key={i}
+                onClick={() => setCurrentIndex(i)}
+                className={`w-2 h-2 rounded-full transition-all ${
+                  currentIndex === i ? 'w-8 bg-brand-orange' : 'bg-white/20 hover:bg-white/40'
+                }`}
+              />
+            ))}
+          </div>
+
+          <div className="absolute top-8 left-8 px-4 py-2 bg-black/50 backdrop-blur-md border border-white/10 rounded-full text-[10px] font-bold uppercase tracking-widest text-white">
+            {currentIndex + 1} / {photos.length}
+          </div>
+        </>
+      )}
+    </div>
+  );
+};
+
 const PortfolioModal = ({ isOpen, onClose, caseItem }: { isOpen: boolean, onClose: () => void, caseItem: PortfolioCase | null }) => {
   if (!caseItem) return null;
 
@@ -182,13 +250,7 @@ const PortfolioModal = ({ isOpen, onClose, caseItem }: { isOpen: boolean, onClos
                    )}
 
                    {caseItem.photos && caseItem.photos.length > 0 && (
-                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                       {caseItem.photos.map((photo, i) => (
-                         <div key={i} className="aspect-[4/3] rounded-[2rem] overflow-hidden glass-panel border-white/5 hover:border-brand-orange/20 transition-all">
-                           <img src={photo} alt={`${caseItem.title} - ${i+1}`} className="w-full h-full object-cover grayscale hover:grayscale-0 transition-all duration-700 hover:scale-105" referrerPolicy="no-referrer" />
-                         </div>
-                       ))}
-                     </div>
+                     <PhotoCarousel photos={caseItem.photos} title={caseItem.title} />
                    )}
                 </div>
               )}

@@ -2,7 +2,7 @@ import { useState, useEffect, FormEvent, ChangeEvent } from 'react';
 import { auth, db, storage, handleFirestoreError, OperationType } from '../lib/firebase';
 import { signInWithPopup, signOut, onAuthStateChanged, User, GoogleAuthProvider } from 'firebase/auth';
 import { collection, query, orderBy, onSnapshot, doc, getDoc, setDoc, addDoc, updateDoc, deleteDoc, serverTimestamp } from 'firebase/firestore';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { ref, uploadBytes, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
 import { LogOut, Shield, Mail, Calendar, Building2, MessageSquare, Info, ChevronRight, Lock, Layout, Briefcase, Plus, X, Trash2, Edit2, Video, Image as ImageIcon, TrendingUp, Target, Lightbulb, Upload, Loader2 } from 'lucide-react';
 
 interface ContactRequest {
@@ -68,21 +68,50 @@ export const AdminDashboard = () => {
     const uploadedUrls: string[] = [];
 
     try {
+        console.log("Storage instance:", storage);
         for (let i = 0; i < files.length; i++) {
             const file = files[i];
-            const fileName = `${Date.now()}-${file.name.replace(/\s+/g, '_')}`;
+            const fileName = `${Date.now()}_${file.name.replace(/[^a-z0-9.]/gi, '_').toLowerCase()}`;
             const storagePath = `portfolio/${fileName}`;
             console.log(`Uploading file ${i+1}/${files.length}: ${storagePath}`);
             
             const storageRef = ref(storage, storagePath);
-            const result = await uploadBytes(storageRef, file);
-            console.log("Upload successful, fetching URL...");
-            const downloadURL = await getDownloadURL(result.ref);
+            
+            // Usamos uploadBytesResumable para poder ver si hay progreso real
+            const uploadTask = uploadBytesResumable(storageRef, file);
+
+            const downloadURL = await new Promise<string>((resolve, reject) => {
+                const timeout = setTimeout(() => {
+                    uploadTask.cancel();
+                    reject(new Error("TIMEOUT_ERROR"));
+                }, 45000);
+
+                uploadTask.on('state_changed', 
+                    (snapshot) => {
+                        const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+                        setUploadProgress(progress);
+                        console.log(`Progress: ${progress.toFixed(2)}%`);
+                    }, 
+                    (error: any) => {
+                        clearTimeout(timeout);
+                        console.error("Upload task error detail:", error);
+                        reject(error);
+                    }, 
+                    async () => {
+                        clearTimeout(timeout);
+                        console.log("Upload success, getting URL...");
+                        try {
+                            const url = await getDownloadURL(uploadTask.snapshot.ref);
+                            resolve(url);
+                        } catch (e) {
+                            reject(e);
+                        }
+                    }
+                );
+            });
+
             console.log("Got URL:", downloadURL);
             uploadedUrls.push(downloadURL);
-            
-            // Artificial progress for the UI
-            setUploadProgress(((i + 1) / files.length) * 100);
         }
 
         if (uploadedUrls.length > 0) {
@@ -101,13 +130,15 @@ export const AdminDashboard = () => {
         console.error("Upload process failed:", error);
         let msg = "Error al subir imagen";
         if (error.code === 'storage/unauthorized') {
-            msg = "Sin permisos de Storage. Es posible que el servicio no esté activado o las reglas lo bloqueen.";
-        } else if (error.code === 'storage/object-not-found') {
-            msg = "No se encontró el destino de subida.";
-        } else if (error.code === 'storage/project-not-found') {
-            msg = "Proyecto de Firebase no configurado correctamente.";
+            msg = "Sin permisos de Storage. Accede a Firebase Console > Storage y asegúrate de que el servicio esté activado y las reglas permitan subidas.";
+        } else if (error.code === 'storage/retry-limit-exceeded' || error.message === 'TIMEOUT_ERROR') {
+            msg = "La subida tardó demasiado o falló la conexión. Comprueba que el servicio de Storage esté inicializado en tu consola.";
+        } else if (error.message && error.message.includes('CORS')) {
+            msg = "Error de CORS: Es necesario configurar CORS en tu bucket de Google Cloud para este dominio.";
+        } else if (error.code === 'storage/unknown') {
+            msg = "Error desconocido de Storage. Podría ser un firewall o bloqueo de red del navegador.";
         }
-        setError(`${msg} (${error.code || error.message || 'unknown'})`);
+        setError(`${msg} (${error.code || error.message || 'unknown error'})`);
     } finally {
         setIsUploading(false);
         setUploadProgress(null);

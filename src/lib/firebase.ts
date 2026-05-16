@@ -1,13 +1,19 @@
 import { initializeApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
-import { getFirestore } from 'firebase/firestore';
+import { initializeFirestore, persistentLocalCache } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
 import firebaseConfig from '../../firebase-applet-config.json';
 
 const app = initializeApp(firebaseConfig);
-export const db = getFirestore(app, firebaseConfig.firestoreDatabaseId);
+// Intentamos obtener el bucket del config o construirlo dinámicamente
+const storageBucket = firebaseConfig.storageBucket || `${firebaseConfig.projectId}.firebasestorage.app`;
+
+// Using initializeFirestore with experimentalForceLongPolling for better stability in proxy environments
+export const db = initializeFirestore(app, {
+  experimentalForceLongPolling: true,
+}, firebaseConfig.firestoreDatabaseId);
 export const auth = getAuth(app);
-export const storage = getStorage(app, `gs://${firebaseConfig.storageBucket}`);
+export const storage = getStorage(app, `gs://${storageBucket}`);
 
 export enum OperationType {
   CREATE = 'create',
