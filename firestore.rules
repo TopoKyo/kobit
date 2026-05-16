@@ -31,7 +31,8 @@ service cloud.firestore {
 
     // Admin lookup helper
     function isAdmin() {
-      return isSignedIn() && (
+      return isSignedIn() && 
+             request.auth.token.email_verified == true && (
         exists(/databases/$(database)/documents/admins/$(request.auth.uid)) ||
         request.auth.token.email == "chinchuarchibo@gmail.com" // Bootstrapped admin
       );
@@ -41,7 +42,7 @@ service cloud.firestore {
 
     function isValidContactRequest(data) {
       return data.keys().hasAll(['name', 'email', 'company', 'area', 'message', 'createdAt']) &&
-             data.keys().size() == 6 &&
+             data.keys().size() >= 6 &&
              data.name is string && data.name.size() > 0 && data.name.size() <= 200 &&
              data.email is string && data.email.size() > 0 && data.email.size() <= 200 &&
              data.company is string && data.company.size() > 0 && data.company.size() <= 200 &&
@@ -59,10 +60,10 @@ service cloud.firestore {
              data.impact is string && data.impact.size() > 0 && data.impact.size() <= 5000 &&
              data.createdAt is timestamp &&
              data.updatedAt == request.time &&
-             (!('videoUrl' in data) || (data.videoUrl is string && data.videoUrl.size() <= 1000)) &&
-             (!('photos' in data) || (data.photos is list && data.photos.size() <= 10)) &&
-             (!('testimonial' in data) || (data.testimonial is string && data.testimonial.size() <= 2000)) &&
-             (!('testimonialAuthor' in data) || (data.testimonialAuthor is string && data.testimonialAuthor.size() <= 200));
+             (!('videoUrl' in data) || data.videoUrl == null || (data.videoUrl is string && data.videoUrl.size() <= 1000)) &&
+             (!('photos' in data) || data.photos == null || (data.photos is list && data.photos.size() <= 10)) &&
+             (!('testimonial' in data) || data.testimonial == null || (data.testimonial is string && data.testimonial.size() <= 2000)) &&
+             (!('testimonialAuthor' in data) || data.testimonialAuthor == null || (data.testimonialAuthor is string && data.testimonialAuthor.size() <= 200));
     }
 
     // --- Match Blocks ---

@@ -192,9 +192,10 @@ export const AdminDashboard = () => {
         solution: '',
         impact: ''
       });
-    } catch (err) {
+    } catch (err: any) {
       console.error("Error saving portfolio item:", err);
       setError("Error al guardar el caso de portafolio");
+      handleFirestoreError(err, editingPortfolio ? OperationType.UPDATE : OperationType.CREATE, 'portfolio');
     } finally {
       setIsSubmitting(false);
     }
@@ -266,7 +267,12 @@ export const AdminDashboard = () => {
         <div className="max-w-md w-full glass-panel p-10 rounded-3xl text-center space-y-6">
           <Shield className="w-16 h-16 text-red-500 mx-auto" />
           <h1 className="text-2xl font-bold">Sin Permisos</h1>
-          <p className="text-gray-400">Tu cuenta ({user.email}) no tiene permisos de administrador.</p>
+          <p className="text-gray-400">Tu cuenta ({user.email}) no tiene permisos de administrador o no ha verificado su correo electrónico.</p>
+          {!user.emailVerified && (
+            <div className="p-4 bg-brand-orange/10 border border-brand-orange/30 rounded-xl text-brand-orange text-sm">
+              Tu correo electrónico no está verificado. Por favor, verifica tu cuenta de Google.
+            </div>
+          )}
           <button 
             onClick={handleLogout}
             className="text-brand-orange font-bold hover:underline"
