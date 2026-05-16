@@ -1,8 +1,9 @@
-import { useState, useEffect, FormEvent } from 'react';
-import { auth, db, handleFirestoreError, OperationType } from '../lib/firebase';
+import { useState, useEffect, FormEvent, ChangeEvent } from 'react';
+import { auth, db, storage, handleFirestoreError, OperationType } from '../lib/firebase';
 import { signInWithPopup, signOut, onAuthStateChanged, User, GoogleAuthProvider } from 'firebase/auth';
 import { collection, query, orderBy, onSnapshot, doc, getDoc, setDoc, addDoc, updateDoc, deleteDoc, serverTimestamp } from 'firebase/firestore';
-import { LogOut, Shield, Mail, Calendar, Building2, MessageSquare, Info, ChevronRight, Lock, Layout, Briefcase, Plus, X, Trash2, Edit2, Video, Image as ImageIcon, TrendingUp, Target, Lightbulb } from 'lucide-react';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { LogOut, Shield, Mail, Calendar, Building2, MessageSquare, Info, ChevronRight, Lock, Layout, Briefcase, Plus, X, Trash2, Edit2, Video, Image as ImageIcon, TrendingUp, Target, Lightbulb, Upload, Loader2 } from 'lucide-react';
 
 interface ContactRequest {
   id: string;
@@ -32,6 +33,7 @@ export const AdminDashboard = () => {
   const [user, setUser] = useState<User | null>(null);
   const [isAdmin, setIsAdmin] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [isLoggingIn, setIsLoggingIn] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [requests, setRequests] = useState<ContactRequest[]>([]);
   const [selectedRequest, setSelectedRequest] = useState<ContactRequest | null>(null);
@@ -52,6 +54,65 @@ export const AdminDashboard = () => {
     impact: ''
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState<number | null>(null);
+
+  const handleFileUpload = async (e: ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+
+    console.log(`Starting upload for ${files.length} files`);
+    setIsUploading(true);
+    setUploadProgress(0);
+
+    const uploadedUrls: string[] = [];
+
+    try {
+        for (let i = 0; i < files.length; i++) {
+            const file = files[i];
+            const fileName = `${Date.now()}-${file.name.replace(/\s+/g, '_')}`;
+            const storagePath = `portfolio/${fileName}`;
+            console.log(`Uploading file ${i+1}/${files.length}: ${storagePath}`);
+            
+            const storageRef = ref(storage, storagePath);
+            const result = await uploadBytes(storageRef, file);
+            console.log("Upload successful, fetching URL...");
+            const downloadURL = await getDownloadURL(result.ref);
+            console.log("Got URL:", downloadURL);
+            uploadedUrls.push(downloadURL);
+            
+            // Artificial progress for the UI
+            setUploadProgress(((i + 1) / files.length) * 100);
+        }
+
+        if (uploadedUrls.length > 0) {
+            const currentPhotos = portfolioForm.photos.trim();
+            const newPhotos = currentPhotos 
+                ? `${currentPhotos}\n${uploadedUrls.join('\n')}`
+                : uploadedUrls.join('\n');
+            
+            setPortfolioForm({
+                ...portfolioForm,
+                photos: newPhotos
+            });
+            console.log("Updated form with new photo URLs");
+        }
+    } catch (error: any) {
+        console.error("Upload process failed:", error);
+        let msg = "Error al subir imagen";
+        if (error.code === 'storage/unauthorized') {
+            msg = "Sin permisos de Storage. Es posible que el servicio no esté activado o las reglas lo bloqueen.";
+        } else if (error.code === 'storage/object-not-found') {
+            msg = "No se encontró el destino de subida.";
+        } else if (error.code === 'storage/project-not-found') {
+            msg = "Proyecto de Firebase no configurado correctamente.";
+        }
+        setError(`${msg} (${error.code || error.message || 'unknown'})`);
+    } finally {
+        setIsUploading(false);
+        setUploadProgress(null);
+    }
+  };
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
@@ -127,7 +188,9 @@ export const AdminDashboard = () => {
   }, [isAdmin, activeTab]);
 
   const handleLogin = async () => {
+    if (isLoggingIn) return;
     setError(null);
+    setIsLoggingIn(true);
     try {
       const provider = new GoogleAuthProvider();
       // Optional: Force account selection
@@ -135,7 +198,12 @@ export const AdminDashboard = () => {
       await signInWithPopup(auth, provider);
     } catch (err: any) {
       console.error("Login failed:", err);
-      setError(err.message || "Error al iniciar sesión");
+      // Don't show error if user just closed the popup or if another one is pending
+      if (err.code !== 'auth/cancelled-popup-request' && err.code !== 'auth/popup-closed-by-user') {
+        setError(err.message || "Error al iniciar sesión");
+      }
+    } finally {
+      setIsLoggingIn(false);
     }
   };
 
@@ -252,9 +320,10 @@ export const AdminDashboard = () => {
 
           <button 
             onClick={handleLogin}
-            className="w-full py-4 bg-brand-orange text-black font-black uppercase text-xs tracking-widest hover:shadow-[0_0_30px_rgba(255,106,0,0.3)] transition-all transform hover:-translate-y-1"
+            disabled={isLoggingIn}
+            className="w-full py-4 bg-brand-orange text-black font-black uppercase text-xs tracking-widest hover:shadow-[0_0_30px_rgba(255,106,0,0.3)] transition-all transform hover:-translate-y-1 disabled:opacity-50 disabled:transform-none"
           >
-            Iniciar sesión con Google
+            {isLoggingIn ? 'Iniciando sesión...' : 'Iniciar sesión con Google'}
           </button>
         </div>
       </div>
@@ -532,13 +601,51 @@ export const AdminDashboard = () => {
                           </div>
                         </div>
                         <div>
-                          <label className="block text-[10px] font-bold uppercase tracking-[0.2em] text-gray-500 mb-3">URLs de Fotos (Una por línea)</label>
+                          <label className="block text-[10px] font-bold uppercase tracking-[0.2em] text-gray-500 mb-3 flex justify-between items-center">
+                            <span>URLs de Fotos (O sube abajo)</span>
+                            {portfolioForm.photos.split('\n').filter(s => s.trim()).length > 0 && (
+                              <span className="text-brand-orange">{portfolioForm.photos.split('\n').filter(s => s.trim()).length} fotos</span>
+                            )}
+                          </label>
                           <textarea 
                             value={portfolioForm.photos}
                             onChange={(e) => setPortfolioForm({...portfolioForm, photos: e.target.value})}
                             className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 focus:border-brand-orange/50 outline-none transition-all font-mono text-xs h-32 resize-none"
                             placeholder="https://image1.jpg&#10;https://image2.jpg"
                           />
+                          <div className="mt-4">
+                            <input 
+                              id="portfolio-image-upload"
+                              type="file" 
+                              multiple 
+                              accept="image/*" 
+                              className="hidden" 
+                              onChange={(e) => {
+                                console.log("File input change detected");
+                                handleFileUpload(e);
+                              }}
+                              disabled={isUploading}
+                            />
+                            <label 
+                              htmlFor="portfolio-image-upload"
+                              className={`
+                                flex items-center justify-center gap-3 w-full py-4 border-2 border-dashed border-white/10 rounded-xl cursor-pointer hover:border-brand-orange/50 hover:bg-brand-orange/5 transition-all
+                                ${isUploading ? 'opacity-50 cursor-not-allowed' : ''}
+                              `}
+                            >
+                              {isUploading ? (
+                                <>
+                                  <Loader2 className="w-5 h-5 animate-spin text-brand-orange" />
+                                  <span className="text-xs font-bold uppercase tracking-widest">Subiendo {Math.round(uploadProgress || 0)}%...</span>
+                                </>
+                              ) : (
+                                <>
+                                  <Upload className="w-5 h-5 text-brand-orange" />
+                                  <span className="text-xs font-bold uppercase tracking-widest text-gray-400">Subir imágenes desde el equipo</span>
+                                </>
+                              )}
+                            </label>
+                          </div>
                         </div>
                       </div>
 

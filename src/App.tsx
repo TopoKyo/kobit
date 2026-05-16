@@ -77,7 +77,7 @@ const Modal = ({ isOpen, onClose, title, subtitle, content, methodology }: { isO
             initial={{ opacity: 0, scale: 0.9, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.9, y: 20 }}
-            className="relative w-full max-w-2xl bg-[#0a0a0a] border border-white/10 rounded-3xl p-10 overflow-hidden shadow-2xl"
+            className="relative w-full max-w-4xl bg-[#0a0a0a] border border-white/10 rounded-3xl p-10 overflow-hidden shadow-2xl"
           >
             <div className="absolute top-0 right-0 w-1/2 h-1/2 bg-brand-orange/5 blur-[80px] rounded-full pointer-events-none" />
             <button 
@@ -147,7 +147,7 @@ const PortfolioModal = ({ isOpen, onClose, caseItem }: { isOpen: boolean, onClos
             initial={{ opacity: 0, scale: 0.9, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.9, y: 20 }}
-            className="relative w-full max-w-5xl h-[90vh] bg-[#0a0a0a] border border-white/10 rounded-[2.5rem] p-0 overflow-y-auto custom-scrollbar shadow-2xl"
+            className="relative w-full max-w-7xl h-[90vh] bg-[#0a0a0a] border border-white/10 rounded-[2.5rem] p-0 overflow-y-auto custom-scrollbar shadow-2xl"
           >
             <div className="absolute top-0 right-0 w-64 h-64 bg-brand-orange/5 blur-[100px] rounded-full pointer-events-none" />
             
@@ -159,7 +159,7 @@ const PortfolioModal = ({ isOpen, onClose, caseItem }: { isOpen: boolean, onClos
             </button>
 
             <div className="p-10 md:p-20">
-              <div className="max-w-3xl">
+              <div className="max-w-5xl">
                 <h3 className="text-xs font-bold uppercase tracking-[0.4em] text-brand-orange mb-6 flex items-center gap-3">
                   <div className="w-2 h-2 rounded-full bg-brand-orange animate-pulse" />
                   Caso de Éxito
